@@ -143,7 +143,7 @@ def get_cyclotomic_cosets(power):
     
     return cyclotomic_cosets
 
-def check_polynomial_with_root(polynomial, root, power, logarithm_table):
+def check_polynomial_with_root(polynomial, root, logarithm_table):
     """
     Substitutes roots in polynomial.
 
@@ -152,8 +152,6 @@ def check_polynomial_with_root(polynomial, root, power, logarithm_table):
     :param root: a binary root,
     where positions of 1s mean
     the power of the field.
-    :param power: the power in size of
-    the field GF(2ᵖᵒʷᵉʳ).
     :param logarithm_table:
     a table which maps logarithms
     to polynomials - members of
@@ -161,7 +159,7 @@ def check_polynomial_with_root(polynomial, root, power, logarithm_table):
     
     :returns: a binary vector.
     """
-    number_of_field_elements = 2 ** power - 1
+    number_of_field_elements = len(logarithm_table) - 1
     power_array = get_positions_of_binary_ones(polynomial)
 
     result = 0
@@ -170,7 +168,7 @@ def check_polynomial_with_root(polynomial, root, power, logarithm_table):
     
     return result
 
-def get_polynomial_from_roots(roots, power, logarithm_table):
+def get_polynomial_from_roots(roots, logarithm_table):
     """
     Performs multiplication of a
     polynomial represented by its
@@ -181,8 +179,6 @@ def get_polynomial_from_roots(roots, power, logarithm_table):
     of roots, where positions of
     1s mean the power a primitive
     element a of the field.
-    :param power: the power in size of
-    the field GF(2ᵖᵒʷᵉʳ).
     :param logarithm_table:
     a table which maps logarithms
     to polynomials - members of
@@ -195,7 +191,7 @@ def get_polynomial_from_roots(roots, power, logarithm_table):
     if roots == 0:
         return 0
 
-    number_of_field_elements = 2 ** power - 1
+    number_of_field_elements = len(logarithm_table) - 1
     root_array = get_positions_of_binary_ones(number=roots)
     polynomial = 1 << len(root_array)
     for i in range(len(root_array)):
@@ -237,7 +233,7 @@ def is_bit_set(polynomial, n):
 
     :returns: a status of bit.
     """
-    return True if (polynomial & (1 << n)) else False
+    return (polynomial & (1 << n))
 
 def binary_to_string(polynomial, direction_polynomial=True):
     """
