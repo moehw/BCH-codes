@@ -1,5 +1,9 @@
+#!/usr/bin/env python3
+#-*- coding: utf-8 -*-
+
 import math
 import random
+import copy
 
 from finitefield import *
 
@@ -82,8 +86,11 @@ class BCH:
     def encode(self, message):
         return encode(self.generator_polynomial, message)
 
-    def decode(self, message):
+    def decode_full(self, message):
         return decode(self.primitive_polynomial, message, self.cyclotomic_cosets, self.logarithm_table, self.power, self.t, self.n, self.k, self.b)
+
+    def decode(self, message):
+        return decode(self.primitive_polynomial, message, self.cyclotomic_cosets, self.logarithm_table, self.power, self.t, self.n, self.k, self.b)[0]
 
 def create_code_with_fix_speed(block_size, speed, dist):
     """
@@ -203,8 +210,8 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
             print("Error in position {}".format(position))
         received_message ^= 1 << position
 
-    received_message >>= (n - k)
-    return received_message
+    decoded_message = received_message >> (n - k)
+    return decoded_message, received_message
 
 def get_syndromes(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_table, power, t, b):
     """
@@ -338,7 +345,7 @@ def berlekamp_massey_decode(syndromes, logarithm_table, power, t, primitive_poly
             # L not updates
             pass
         else:
-            T = C.copy() # temporary polinomial
+            T = copy.deepcopy(C) # temporary polinomial
 
             for i in range(len(C)):
                 b_idx = flipped_logarithm_table[B[i]]
@@ -358,11 +365,11 @@ def berlekamp_massey_decode(syndromes, logarithm_table, power, t, primitive_poly
                         div = (C_idx + delta_idx) % number_of_elements
                         B[i] = logarithm_table[div]
 
-                C = T.copy()
+                C = copy.deepcopy(T)
 
                 L = n + 1 - L
             else:
-                C = T.copy()
+                C = copy.deepcopy(T)
 
     result = []
     for poly in C:
@@ -446,35 +453,3 @@ def flip_dictionary(dictionary):
     :returns: a flipped dictionary.
     """
     return dict((v, k) for k, v in dictionary.items())
-
-def test1():
-    bch = BCH(31, 2 * 3 + 1, 1, get_primitive_polynomial(6))
-    block = 5211
-    encode_ = 1366166387
-    distorted = 1131154291
-
-    exp_encode = bch.encode(block)
-
-    assert exp_encode == encode_
-
-    exp_block = bch.decode(distorted)
-
-    assert exp_block == block
-
-def test2():
-    bch = BCH(31, 2 * 6 + 1, 1, get_primitive_polynomial(4))
-    block = 0b11100001010111110
-    encode_ = 0b1110000101011111001111010100001
-    distorted = 0b1110001001011101011001010100001
-
-    exp_encode = bch.encode(block)
-
-    assert exp_encode == encode_
-
-    exp_block = bch.decode(distorted)
-
-    assert exp_block == block
-
-
-if __name__ == '__main__':
-    test2()

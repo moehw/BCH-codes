@@ -1,4 +1,8 @@
+#!/usr/bin/env python3 
+#-*- coding: utf-8 -*-
+
 from itertools import combinations
+import random
 
 def get_primitive_polynomial(power):
     """
@@ -394,6 +398,36 @@ def binary_to_string(polynomial, direction_polynomial=True):
                 s += ("" if s == "" else ", ") + \
                     "x" + ("" if i == 1 else str(i).translate(superscript))
     return s
+
+def get_random_number_of_hamming_weight(length, weight):
+    """
+    Returns a random number of a particular Hamming
+    weight.
+
+    :param length: a length of a number.
+    :param weight: a weight of a number.
+    
+    :returns: the number meets the requirements of
+    length and Hamming weight.
+    
+    :raises: ValueError if the weight is greater
+    than the length.
+    """
+    if weight > length:
+        raise ValueError("The weight shouldn't be greater than the length: {} > {}"\
+                        .format(weight, length))
+
+    i = 0
+    result = 0
+    while True:
+        if i == weight:
+            return result
+        shift = random.randrange(length)
+        power_of_two = 1 << shift
+        if power_of_two & result == power_of_two:
+            continue
+        result |= power_of_two
+        i += 1
 
 def msb(number):
     """
