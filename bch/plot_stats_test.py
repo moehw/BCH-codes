@@ -30,14 +30,14 @@ def get_random_messages(count, n):
     
     return messages
 
-n = 31
+n = 15
 for t in range(2, 10):
-    bch = BCH(n, 2 * t + 1, 1, get_primitive_polynomial(10, 1))
+    bch = BCH(n, 2 * t + 1, 1, get_primitive_polynomial(4))
     
     # encoding
     blocks = []
     encoded_codewords = []
-    for block in get_random_messages(count=10000, n=bch.k):
+    for block in get_random_messages(count=100, n=bch.k):
         blocks.append(block)
         codeword = bch.encode(block)
         if VERBOSE:
@@ -70,7 +70,7 @@ for t in range(2, 10):
     ax.set_xlabel('Decoding Results, %')
     ax.set_ylabel('Errors Made')
 
-    for error_number in range(t + 1, t + 2):
+    for error_number in range(t, t + 2):
         print("Running with t = {}".format(error_number))
         # distortion
         distorted_codewords = []
@@ -101,6 +101,7 @@ for t in range(2, 10):
                 right += 1
             else:
                 wrong += 1
+                message = bch.decode(distorted_codewords[codeword])
 
         assert right + wrong + cancel == len(encoded_codewords)
 

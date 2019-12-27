@@ -3,7 +3,7 @@ import random
 
 from finitefield import *
 
-VERBOSE = True
+VERBOSE = False
 TEST    = False
 
 class BCH:
@@ -75,8 +75,9 @@ class BCH:
         k = n - msb(generator_polynomial)
         self.k = k
 
-        print("n: {}, d: {}, t: {}, b: {}, power: {}, k: {}".format(n, dist, t, b, power, k))
-        print("Generator polynomial: {} ({:b})".format(binary_to_string(generator_polynomial), generator_polynomial))
+        if VERBOSE:
+            print("n: {}, d: {}, t: {}, b: {}, power: {}, k: {}".format(n, dist, t, b, power, k))
+            print("Generator polynomial: {} ({:b})".format(binary_to_string(generator_polynomial), generator_polynomial))
 
     def encode(self, message):
         return encode(self.generator_polynomial, message)
@@ -99,7 +100,7 @@ def create_code_with_fix_speed(block_size, speed, dist):
 
     k = round(block_size * speed)
 
-    return BCH(block_size, dist, 1, get_primitive_polynomial(block_size - k - dist + 1, 1))
+    return BCH(block_size, dist, 1, get_primitive_polynomial(block_size - k - dist + 1))
 
 def calculate_generator_polynomial(cyclotomic_cosets, logarithm_table, power, polynomial_count):
     """
@@ -446,8 +447,8 @@ def flip_dictionary(dictionary):
     """
     return dict((v, k) for k, v in dictionary.items())
 
-if __name__ == '__main__':
-    bch = BCH(31, 2 * 3 + 1, 1, get_primitive_polynomial(6, 1))
+def test1():
+    bch = BCH(31, 2 * 3 + 1, 1, get_primitive_polynomial(6))
     block = 5211
     encode_ = 1366166387
     distorted = 1131154291
@@ -459,3 +460,21 @@ if __name__ == '__main__':
     exp_block = bch.decode(distorted)
 
     assert exp_block == block
+
+def test2():
+    bch = BCH(31, 2 * 6 + 1, 1, get_primitive_polynomial(4))
+    block = 0b11100001010111110
+    encode_ = 0b1110000101011111001111010100001
+    distorted = 0b1110001001011101011001010100001
+
+    exp_encode = bch.encode(block)
+
+    assert exp_encode == encode_
+
+    exp_block = bch.decode(distorted)
+
+    assert exp_block == block
+
+
+if __name__ == '__main__':
+    test2()
