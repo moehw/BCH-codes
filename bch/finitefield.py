@@ -1,4 +1,48 @@
 from itertools import combinations
+import yaml
+import csv
+
+def get_primitive_polynomial(power, k):
+    """
+    Retrieves a table of primitive
+    polynomials from the given in
+    the config file, and returns a
+    corresponding to the
+    parameters polynomial.
+    
+    :param power: the power of 2 in
+    the length of a code (2ᵖᵒʷᵉʳ).
+    :param k: param in the table
+    corresponds to the size of the
+    polynomial.
+    Maps 1 -> 3, 2 -> 5, 3 -> 7
+    
+    :returns: a primitive polynomial
+    in a binary representation.
+    """
+    if power < 1 | power > 51:
+        raise ValueError('The parameter n should be 1 <= power <= 51, power is {0}'.format(power))
+
+    if k < 1 | k > 3:
+        raise ValueError('The parameter k should be 1 <= k <= 3, k is {0}'.format(k))
+
+    config = yaml.safe_load(open("config.yml"))
+    dictionary = {1: 1, 2: 2, 3: 5, 4: 10}
+    with open(config['primitive-polynomials'], newline='') as csvfile:
+        
+        primitive_polynomials = csv.reader(csvfile, delimiter=',')
+        for row in primitive_polynomials:
+
+            ints = list(map(lambda x: 0 if x == '' else int(x), row))
+            if ints[0] == power:
+                polynomial_powers = ints[dictionary[k]:dictionary[k + 1]]
+                polynomial_binary = 1 << power
+                polynomial_binary |= 1
+
+                for i in polynomial_powers:
+                    polynomial_binary |= 1 << i
+
+                return polynomial_binary
 
 def get_logarithm_table(power, primitive_polynomial):
     """
@@ -13,8 +57,8 @@ def get_logarithm_table(power, primitive_polynomial):
 
     :returns: a logarithm table of the field.
     """
-    assert msb(primitive_polynomial) == power, \
-     "The primitive polynomial {:b} is not of the specified power n = {}".format(primitive_polynomial, power)
+    if msb(primitive_polynomial) != power:
+        raise ValueError("The primitive polynomial {:b} is not of the specified power n = {}".format(primitive_polynomial, power))
 
     logarithm_table = {-1: 0}
 

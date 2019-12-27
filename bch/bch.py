@@ -3,10 +3,10 @@ import random
 
 from finitefield import *
 
-VERBOSE = False
+VERBOSE = True
 TEST    = False
 
-class BCH(object):
+class BCH:
     """Bose–Chaudhuri–Hocquenghem error-correcting code."""
 
     def __init__(self, n, dist, b, primitive_polynomial):
@@ -31,8 +31,6 @@ class BCH(object):
         power = msb(primitive_polynomial)
         self.power = power
         
-        print("n: {}\nd: {}\nt: {}\nb: {}\npower: {}".format(n, dist, t, b, power))
-
         full_cyclotomic_cosets = get_cyclotomic_cosets(power=power)
         if VERBOSE:
             print("All cosets: {}".format("\n".join(binary_to_string(i, False) for i in full_cyclotomic_cosets)))
@@ -76,43 +74,32 @@ class BCH(object):
 
         k = n - msb(generator_polynomial)
         self.k = k
-        print("k: {}".format(k))
+
+        print("n: {}, d: {}, t: {}, b: {}, power: {}, k: {}".format(n, dist, t, b, power, k))
         print("Generator polynomial: {} ({:b})".format(binary_to_string(generator_polynomial), generator_polynomial))
 
     def encode(self, message):
-        return encode(bch.generator_polynomial, message)
+        return encode(self.generator_polynomial, message)
 
     def decode(self, message):
         return decode(self.primitive_polynomial, message, self.cyclotomic_cosets, self.logarithm_table, self.power, self.t, self.n, self.k, self.b)
 
-    def bm(self, v):
-        pass
-        # beta = self.b
+def create_code_with_fix_speed(block_size, speed, dist):
+    """
+    :param block_size: a size of one block of
+    input data to be encoded/decoded.
+    :param speed: a speed of code, equal to
+    k divided by n.
+    :param dist: a disigned distination between
+    codewords.
 
-        # S = [check_polynomial_with_root(v, 1 << (beta + j), self.power, self.logarithm_table) for j in range(2 * self.t)]
-        
-        # # Lambda = [0] * (2 * self.t + 1)
-        # # Lambda[0] = 1
-        # Lambda = 1
-        # d = 0
-        # n = 0
-        # Lambda_star = 0
-        # # Lambda_star = [0] * (2 * self.t + 1)
+    :returns: a BCH code class with given
+    code speed.
+    """
 
-        # while n + d < 2*self.t:
-        #     Delta = sum([is_bit_set(Lambda, m) * S[m+n+1] for m in range(0, d + 1)])
-        #     if Delta == 0:
-        #         n += 1
-        #     elif n < d:
-        #         Lambda -= Delta * (Lambda_star << (d - n - 1))
-        #         n += 1
-        #     else:
-        #         (Lambda, Lambda_star) = ((Lambda << (n - d + 1)) - Delta * Lambda_star, Lambda / Delta)
-        #         (n, d) = (d, n + 1)
+    k = round(block_size * speed)
 
-        # print("\nResult: Λ(x) = ", Lambda, "\n")
-
-        # return Lambda
+    return BCH(block_size, dist, 1, get_primitive_polynomial(block_size - k - dist + 1, 1))
 
 def calculate_generator_polynomial(cyclotomic_cosets, logarithm_table, power, polynomial_count):
     """
@@ -181,7 +168,7 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
     G(2ᵖᵒʷᵉʳ).
     :param t: a number of errors to be corrected.
     
-    :returns: a decoded message.
+    :returns: a decoded message and status.
     """
     syndromes, is_error = get_syndromes(
         primitive_polynomial=primitive_polynomial,
@@ -201,8 +188,9 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
         syndromes=syndromes,
         logarithm_table=logarithm_table,
         power=power,
-        t=t)
-        
+        t=t,
+        primitive_polynomial=primitive_polynomial)
+
     roots = find_roots_of_sigma(
         sigma=sigma,
         power=power,
@@ -210,6 +198,8 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
 
     error_positions = get_error_positions(roots=roots, power=power)
     for position in error_positions:
+        if VERBOSE:
+            print("Error in position {}".format(position))
         received_message ^= 1 << position
 
     received_message >>= (n - k)
@@ -290,11 +280,10 @@ def get_syndromes(primitive_polynomial, received_message, cyclotomic_cosets, log
         
     return syndromes, is_error
 
-def berlekamp_massey_decode(syndromes, logarithm_table, power, t):
+def berlekamp_massey_decode(syndromes, logarithm_table, power, t, primitive_polynomial):
     """
     Calculates an error locator polynomial using
     the Berlekamp-Massey algorithm.
-
     :param syndromes: a calculated array of
     syndromes corresponding to the received
     message with error vector.
@@ -312,7 +301,6 @@ def berlekamp_massey_decode(syndromes, logarithm_table, power, t):
                                   0               1
     to the position. array[0] is x , array[1] is x .
     In these cells the powers of α are stored.
-
     """
     
     flipped_logarithm_table = flip_dictionary(dictionary=logarithm_table)
@@ -325,48 +313,55 @@ def berlekamp_massey_decode(syndromes, logarithm_table, power, t):
     B = [0] * (2 * t) # copy of C on last L update
     B[0] = 1
 
-    m = 1 # iteration from last L update
-    b = 1 # copy of delta on last L update
-
     for n in range(2 * t):
-        delta = logarithm_table[syndromes[n] % number_of_elements]
-        
+
         # ∆ (delta)
-        for i in range(1, L + 1):
+        delta = 0
+        for i in range(0, L + 1):
             if not (C[i] and logarithm_table[syndromes[n - i]]):
                 # one of the factors is zero
                 continue
-            delta ^= logarithm_table[(flipped_logarithm_table[C[i]] + syndromes[n - i]) % number_of_elements]
 
-        print("\nn: {}, delta: {}".format(n, delta))
+            C_idx = flipped_logarithm_table[C[i]]
+            s_idx = syndromes[n - i]
+            mult = (C_idx + s_idx) % number_of_elements
+            delta ^= logarithm_table[mult] 
 
+        if VERBOSE:
+            print("\nn: {}, delta: {}".format(n, delta))
+
+        for i in range(len(B) - 1, -1, -1):
+            B[i] = 0 if (i == 0) else B[i - 1] # x*B(x)
+        
         if delta == 0:
             # L not updates
-            m += 1
-            for i in range(len(B) - 1, -1, -1):
-                B[i] = 0 if (i == 0) else B[i - 1] # x^m*B(x)
+            pass
         else:
-            for i in range(len(B) - 1, -1, -1):
-                B[i] = 0 if (i == 0) else B[i - 1] # x^m*B(x)
+            T = C.copy() # temporary polinomial
 
-            mult = logarithm_table[(flipped_logarithm_table[delta] + (number_of_elements - flipped_logarithm_table[b])) % number_of_elements] # delta * b^-1
-            
+            for i in range(len(C)):
+                b_idx = flipped_logarithm_table[B[i]]
+                delta_idx = flipped_logarithm_table[delta]
+                if b_idx != -1:
+                    mult = (b_idx + delta_idx) % number_of_elements
+                    T[i] ^= logarithm_table[mult]
+
             if 2 * L <= n:
                 # L updates, nullify delta
-                T = C.copy() # temporary polinomial
 
                 for i in range(len(C)):
-                    C[i] ^= multiply_polynomials(polynomial1=mult,
-                                                 polynomial2=B[i]) 
+                    B[i] = 0
+                    delta_idx = number_of_elements - flipped_logarithm_table[delta]
+                    C_idx = flipped_logarithm_table[C[i]]
+                    if C_idx != -1:
+                        div = (C_idx + delta_idx) % number_of_elements
+                        B[i] = logarithm_table[div]
 
-                B = T.copy()
+                C = T.copy()
+
                 L = n + 1 - L
-                b = delta
             else:
-                for i in range(len(C)):
-                    C[i] ^= multiply_polynomials(polynomial1=mult,
-                                                 polynomial2=B[i]) 
-                m += 1
+                C = T.copy()
 
     result = []
     for poly in C:
@@ -425,7 +420,7 @@ def get_error_positions(roots, power):
 def get_order_of_sigma(sigma):
     """
     Returns an order of an
-    arror locator polynomial.
+    error locator polynomial.
     
     :param sigma: an error
     locator polynomial.
@@ -451,112 +446,16 @@ def flip_dictionary(dictionary):
     """
     return dict((v, k) for k, v in dictionary.items())
 
-# Message input
+if __name__ == '__main__':
+    bch = BCH(31, 2 * 3 + 1, 1, get_primitive_polynomial(6, 1))
+    block = 5211
+    encode_ = 1366166387
+    distorted = 1131154291
 
-def message_to_bits_and_split_on_blocks(message, n):
-    """
-    Translates a message to bit representation and splits bits
-    on blocks of length n.
-    
-    :param message: a message to translate.
-    :param n: length of a block.
-    
-    :returns: an array of binary blocks.
-    """
-    bits = text_to_bits(message)
-    blocks = []
+    exp_encode = bch.encode(block)
 
-    while bits != 0:
-        block = bits & (2 ** n - 1)
-        blocks.append(block)
-        bits >>= n
-    return blocks
+    assert exp_encode == encode_
 
-def text_to_bits(text, encoding='utf-8', errors='surrogatepass'):
-    """
-    Translates given text to bits.
-    
-    :param text: a string to translate.
-    :param encoding: a used encoding.
-    :param errors: an error attitude.
-    
-    :returns: a binary vector.
-    """
-    return int.from_bytes(text.encode(encoding, errors), 'big')
+    exp_block = bch.decode(distorted)
 
-def bits_to_message_and_concat_blocks(blocks, n):
-    """
-    Translates an array of bit vectors to string.
-    
-    :param blocks: an array of bit vectors.
-    :param n: length of a bit vector.
-    
-    :returns: a string of united translated vectors.
-    """
-    result = 0
-    for block in reversed(blocks):
-        result <<= n
-        result ^= block
-    return result, text_from_bits(result)
-
-def text_from_bits(bits, encoding='utf-8', errors='surrogatepass'):
-    """
-    Translates a bit array to string.
-    
-    :param bits: a bit array.
-    :param encoding: a used encoding.
-    :param errors: an error attitude.
-    
-    :returns: a string.
-    """
-    return bits.to_bytes((bits.bit_length() + 7) // 8, 'big').decode(encoding, errors) or '\0'
-
-# Samples
-
-def lab():
-    primpoly = 0b1101101
-    n = 63
-    d = 11
-    t = (d - 1) >> 1
-    b = 55
-    bch = BCH(n, d, b, primpoly)
-    return bch
-
-def lecture():
-    bch = BCH(15, 5, 1, 0b10011)
-    return bch
-
-def book():
-    generator = 0b10100110111
-    n = 15
-    d = 7
-    bch = BCH(n, d, 1, 0b10011)
-    return bch
-
-if __name__ == "__main__":
-
-    # message = 0b11010000101
-    # bch = lab()
-
-    # message = 0
-    # bch = book()
-
-    message = 0b1010101
-    bch = lecture()
-
-    print("Input: {} ({:b})".format(binary_to_string(message), message))
-
-    result = bch.encode(message)
-    print("Result encode: {} ({:b})".format(binary_to_string(result), result))
-
-    # result = 0b10100100
-    result ^= 0b101000
-    print(bin(result))
-
-    result = bch.decode(result)
-    # result = bch.bm(result)
-    print("Result decode: {} ({:b})".format(binary_to_string(result), result))
-
-    assert message == result, \
-        "Message was encoded or decoded incorrect"
-    
+    assert exp_block == block
