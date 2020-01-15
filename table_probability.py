@@ -4,10 +4,6 @@
 import sys
 import random
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
-
 from bch import *
 
 import os

@@ -190,25 +190,24 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
     if not is_error:
         if VERBOSE:
             print("Message has no errors")
-        return received_message
+    else:
+        sigma = berlekamp_massey_decode(
+            syndromes=syndromes,
+            logarithm_table=logarithm_table,
+            power=power,
+            t=t,
+            primitive_polynomial=primitive_polynomial)
 
-    sigma = berlekamp_massey_decode(
-        syndromes=syndromes,
-        logarithm_table=logarithm_table,
-        power=power,
-        t=t,
-        primitive_polynomial=primitive_polynomial)
+        roots = find_roots_of_sigma(
+            sigma=sigma,
+            power=power,
+            logarithm_table=logarithm_table)
 
-    roots = find_roots_of_sigma(
-        sigma=sigma,
-        power=power,
-        logarithm_table=logarithm_table)
-
-    error_positions = get_error_positions(roots=roots, power=power)
-    for position in error_positions:
-        if VERBOSE:
-            print("Error in position {}".format(position))
-        received_message ^= 1 << position
+        error_positions = get_error_positions(roots=roots, power=power)
+        for position in error_positions:
+            if VERBOSE:
+                print("Error in position {}".format(position))
+            received_message ^= 1 << position
 
     decoded_message = received_message >> (n - k)
     return decoded_message, received_message
