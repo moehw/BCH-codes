@@ -5,8 +5,8 @@ import math
 import random
 import multiprocessing
 
-PRE_DEFINED = False
-PLOT = False
+PRE_DEFINED = True
+PLOT = True
 
 if PLOT:
     import matplotlib.pyplot as plt
@@ -126,7 +126,7 @@ if __name__ == '__main__':
         return_dict = manager.dict()
         jobs = []
 
-        test_number = 10
+        test_number = 10000
 
         n = 512
         bch = BCH(n, 63, 1, get_primitive_polynomial(9))
@@ -148,9 +148,9 @@ if __name__ == '__main__':
         print("No coding: {}".format(no_coding_result))
         print("SNR: {}".format(signal_to_noise_ratio_result))
 
-    else: #                             1    2    3     4     5     6     7     8     9     10    11    12   13
-        signal_to_noise_ratio_result = [1.0, 1.0, 0.99, 0.42, 0.00, 0.01, 0.01, 0.0 , 0.0 , 0.00, 0.0 , 0.0, 0.0]
-        no_coding_result             = [1.0, 1.0, 1.0 , 1.0 , 1.0 , 0.99, 0.97, 0.78, 0.44, 0.19, 0.05, 0.0, 0.0]
+    else: #                             1    2       3       4       5       6       7       8       9       10      11      12    
+        signal_to_noise_ratio_result = [1.0, 0.9998, 0.9498, 0.3764, 0.027 , 0.0138, 0.0065, 0.0033, 0.0009, 0.0004, 0.0001, 0.0   ]
+        no_coding_result             = [1.0, 1.0   , 1.0   , 0.9979, 0.9517, 0.7106, 0.325 , 0.0908, 0.018 , 0.0023, 0.0004, 0.0001]
 
     if PLOT:
         plt.plot(x_array[0:len(signal_to_noise_ratio_result)], signal_to_noise_ratio_result, 'o') # points
