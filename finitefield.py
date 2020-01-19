@@ -2,6 +2,7 @@
 #-*- coding: utf-8 -*-
 
 from itertools import combinations
+import sys
 import random
 
 def get_primitive_polynomial(power):
@@ -19,7 +20,7 @@ def get_primitive_polynomial(power):
     in a binary representation.
     """
     
-    prim_polynomials = {
+    primitive_polynomial = {
     2 : 0b111,
     3 : 0b1011,
     4 : 0b10011,
@@ -132,7 +133,7 @@ def get_primitive_polynomial(power):
     # 111 : x^111+x^10+1
     }
 
-    return prim_polynomials[power]
+    return primitive_polynomial[power]
 
 def get_logarithm_table(power, primitive_polynomial):
     """
@@ -387,16 +388,28 @@ def binary_to_string(polynomial, direction_polynomial=True):
     if polynomial == 0:
         return "0"
 
-    superscript = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
-    s = "" if not is_bit_set(polynomial, 0) else "1"
-    for i in range(1, msb(polynomial) + 1):
-        if is_bit_set(polynomial, i):
-            if direction_polynomial:
-                s = "x" + ("" if i == 1 else str(i).translate(superscript)) + \
-                    ("" if s == "" else " + ") + s
-            else:
-                s += ("" if s == "" else ", ") + \
-                    "x" + ("" if i == 1 else str(i).translate(superscript))
+    if sys.version_info[0] >= 3: # python3
+        superscript = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
+        s = "" if not is_bit_set(polynomial, 0) else "1"
+        for i in range(1, msb(polynomial) + 1):
+            if is_bit_set(polynomial, i):
+                if direction_polynomial:
+                    s = "x" + ("" if i == 1 else str(i).translate(superscript)) + \
+                        ("" if s == "" else " + ") + s
+                else:
+                    s += ("" if s == "" else ", ") + \
+                        "x" + ("" if i == 1 else str(i).translate(superscript))
+    else: # python2
+        s = "" if not is_bit_set(polynomial, 0) else "1"
+        for i in range(1, msb(polynomial) + 1):
+            if is_bit_set(polynomial, i):
+                if direction_polynomial:
+                    s = "x" + ("" if i == 1 else ("^" + str(i))) + \
+                        ("" if s == "" else " + ") + s
+                else:
+                    s += ("" if s == "" else ", ") + \
+                        "x" + ("" if i == 1 else ("^" + str(i)))
+
     return s
 
 def get_random_number_of_hamming_weight(length, weight):

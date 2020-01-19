@@ -6,8 +6,6 @@ import random
 
 from bch import *
 
-import os
-import functools
 
 def get_random_messages(count, n):
     messages = []
@@ -18,13 +16,11 @@ def get_random_messages(count, n):
     return messages
 
 def get_hamming_weight(num):
-    length = len(bin(num)) - 2
     weight = 0
 
-    for i in range(length):
-        if num & 1 == 1:
+    for i in range(msb(num)):
+        if is_bit_set(num, i):
             weight += 1
-        num >>= 1
 
     return weight
 
@@ -81,8 +77,8 @@ def error_probability():
 
             for codeword in range(len(distorted_codewords)):
                 try:
-                    message, decoded_codeword = bch.decode_full(distorted_codewords[codeword])
-                except Exception as e:
+                    message, decoded_codeword = bch.decode_ex(distorted_codewords[codeword])
+                except Exception:
                     cancel += 1
                     continue
 

@@ -86,28 +86,11 @@ class BCH:
     def encode(self, message):
         return encode(self.generator_polynomial, message)
 
-    def decode_full(self, message):
+    def decode_ex(self, message):
         return decode(self.primitive_polynomial, message, self.cyclotomic_cosets, self.logarithm_table, self.power, self.t, self.n, self.k, self.b)
 
     def decode(self, message):
         return decode(self.primitive_polynomial, message, self.cyclotomic_cosets, self.logarithm_table, self.power, self.t, self.n, self.k, self.b)[0]
-
-def create_code_with_fix_speed(block_size, speed, dist):
-    """
-    :param block_size: a size of one block of
-    input data to be encoded/decoded.
-    :param speed: a speed of code, equal to
-    k divided by n.
-    :param dist: a disigned distination between
-    codewords.
-
-    :returns: a BCH code class with given
-    code speed.
-    """
-
-    k = round(block_size * speed)
-
-    return BCH(block_size, dist, 1, get_primitive_polynomial(block_size - k - dist + 1))
 
 def calculate_generator_polynomial(cyclotomic_cosets, logarithm_table, power, polynomial_count):
     """
@@ -175,7 +158,11 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
     :param power: the power in the Galois field
     G(2ᵖᵒʷᵉʳ).
     :param t: a number of errors to be corrected.
-    
+    :param n: a length of code.
+    :param k: a length of informative part of code.
+    :param b: a power of element from witch we choose
+    cyclotomic cosets for generator polynomial. 
+
     :returns: a decoded message and status.
     """
     syndromes, is_error = get_syndromes(
@@ -195,8 +182,7 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
             syndromes=syndromes,
             logarithm_table=logarithm_table,
             power=power,
-            t=t,
-            primitive_polynomial=primitive_polynomial)
+            t=t)
 
         roots = find_roots_of_sigma(
             sigma=sigma,
@@ -215,25 +201,11 @@ def decode(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_
 def get_syndromes(primitive_polynomial, received_message, cyclotomic_cosets, logarithm_table, power, t, b):
     """
     Calculates syndromes as values of received
-    message at zeroes of generator polynomial.
-
-    Calculates syndromes based on a particular
-    received message, in number of 2 * t.
-    E.g. received message is 100100100000001
-    should be divided by each of the minimal
-    polynomials. The reminder is 1110 if it is
-    divided by M1 = 11001. Using roots of M1
-    a, a² , a⁴ three syndromes are obtained:
-    S1 = 1110, due to x = a;
-                                
-    S2 = 101010100, due to x = a² for 1110;
-    S3 = 10001000100010000, due to x = a³ for
-    1110.
-    Note that 1110 means x³ + x² + x¹.
-
+    message at zeroes of generator polynomial,
+    in number of 2 * t.
+    
     :param primitive_polynomial: a primitive
-    polynomial, primitive in sense of the
-    given GF(2ᵖᵒʷᵉʳ).
+    polynomial of the given GF(2ᵖᵒʷᵉʳ).
     :param received_message: a message which
     was received by the decoder.
     :param cyclotomic_cosets: cyclotomic cosets
@@ -242,12 +214,12 @@ def get_syndromes(primitive_polynomial, received_message, cyclotomic_cosets, log
     of the field elements for multiplication.
     :param power: the power in GF(2ᵖᵒʷᵉʳ).
     :param t: a number of errors to correct.
-    
+    :param b: a power of element from witch we choose
+    cyclotomic cosets for generator polynomial. 
+
     :returns: a list of powers of a primitive
     element a as shortcuts for polynomials.
     """
-    length = t * 2
-    # syndromes = [0] * length
     syndromes = []
     is_error = False
 
@@ -287,10 +259,11 @@ def get_syndromes(primitive_polynomial, received_message, cyclotomic_cosets, log
         
     return syndromes, is_error
 
-def berlekamp_massey_decode(syndromes, logarithm_table, power, t, primitive_polynomial):
+def berlekamp_massey_decode(syndromes, logarithm_table, power, t):
     """
     Calculates an error locator polynomial using
     the Berlekamp-Massey algorithm.
+
     :param syndromes: a calculated array of
     syndromes corresponding to the received
     message with error vector.
@@ -382,12 +355,6 @@ def find_roots_of_sigma(sigma, power, logarithm_table):
     
     :param sigma: a sigma is an array representing
     an error locator polynomial.
-                               2        14    2
-    The result looks like 1 + α  * x + α   * x .
-    The array represents the powers of x accordingly
-                                  0               1
-    to the position. array[0] is x , array[1] is x .
-    In these cells the powers of α are stored.
     :param power: the power in a Galois field GF(2ᵖᵒʷᵉʳ).
     :param logarithm_table: a mapping of a power
     to a corresponding element of a particular
